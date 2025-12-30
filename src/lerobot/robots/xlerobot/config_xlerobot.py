@@ -24,15 +24,15 @@ from ..config import RobotConfig
 def xlerobot_cameras_config() -> dict[str, CameraConfig]:
     return {
         "left_arm_wrist": OpenCVCameraConfig(
-            index_or_path=1, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
+            index_or_path=8, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
         ),
 
         "right_arm_wrist": OpenCVCameraConfig(
-            index_or_path=2, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
+            index_or_path=6, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
         ),  
 
         "head": OpenCVCameraConfig(
-            index_or_path=0, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
+            index_or_path=4, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
         )
 
         # "head(RGDB)": OpenCVCameraConfig(
@@ -55,8 +55,8 @@ def xlerobot_cameras_config() -> dict[str, CameraConfig]:
 @dataclass
 class XLerobotConfig(RobotConfig):
     
-    port1: str = "/dev/tty.usbmodem5AB01580741"  # port to connect to the bus (so101 + head camera)
-    port2: str = "/dev/tty.usbmodem5A7C1203811"  # port to connect to the bus (same as lekiwi setup)
+    port1: str = "/dev/ttyACM0"  # port to connect to the bus (so101 + head camera)
+    port2: str = "/dev/ttyACM1"  # port to connect to the bus (same as lekiwi setup)
     disable_torque_on_disconnect: bool = True
 
     # `max_relative_target` limits the magnitude of the relative positional target vector for safety purposes.
