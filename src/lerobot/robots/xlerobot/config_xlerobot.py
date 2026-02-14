@@ -24,11 +24,11 @@ from ..config import RobotConfig
 def xlerobot_cameras_config() -> dict[str, CameraConfig]:
     return {
         "left_arm_wrist": OpenCVCameraConfig(
-            index_or_path=8, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
+            index_or_path=0, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
         ),
 
         "right_arm_wrist": OpenCVCameraConfig(
-            index_or_path=6, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
+            index_or_path=2, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
         ),  
 
         "head": OpenCVCameraConfig(
@@ -98,7 +98,7 @@ class XLerobotHostConfig:
     connection_time_s: int = 3600
 
     # Watchdog: stop the robot if no command is received for over 0.5 seconds.
-    watchdog_timeout_ms: int = 500
+    watchdog_timeout_ms: int = 2000
 
     # If robot jitters decrease the frequency and monitor cpu load with `top` in cmd
     max_loop_freq_hz: int = 30
@@ -130,5 +130,5 @@ class XLerobotClientConfig(RobotConfig):
 
     cameras: dict[str, CameraConfig] = field(default_factory=xlerobot_cameras_config)
 
-    polling_timeout_ms: int = 15
+    polling_timeout_ms: int = 1000
     connect_timeout_s: int = 5

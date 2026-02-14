@@ -51,7 +51,7 @@ HEAD_MOTOR_MAP = {
 
 class FixedAxesJoyconRobotics(JoyconRobotics):
     def __init__(self, device, **kwargs):
-        super().__init__(device,** kwargs)
+        super().__init__(device, **kwargs)
 
         # Set different center values for left and right Joy-Cons
         if self.joycon.is_right():
@@ -281,49 +281,65 @@ class SimpleTeleopArm:
 class SimpleHeadControl:
     def __init__(self, initial_obs, kp=1):
         self.kp = kp
-        self.degree_step = 2  # Move 2 degrees each time
-        # Initialize head motor positions
+        self.degree_step = 2
+        # --- MODIFICATION: Only handle position control for motor 2 ---
         self.target_positions = {
-            "head_motor_1": initial_obs.get("head_motor_1.pos", 0.0),
             "head_motor_2": initial_obs.get("head_motor_2.pos", 0.0),
         }
-        self.zero_pos = {"head_motor_1": 0.0, "head_motor_2": 0.0}
+        self.zero_pos = {"head_motor_2": 0.0}
+
+        # --- MODIFICATION: Add velocity control for motor 1 ---
+        self.head_motor_1_velocity = 0
+        self.velocity_step = 1500  # 舵机转动速度，您可以根据需要调整这个值
 
     def move_to_zero_position(self, robot):
-        print(f"[HEAD] Moving to Zero Position: {self.zero_pos} ......")
-        self.target_positions = self.zero_pos.copy()
+        # --- MODIFICATION: Only move motor 2 to zero and stop motor 1 ---
+        print(f"[HEAD] Moving head_motor_2 to Zero Position...")
+        self.target_positions["head_motor_2"] = self.zero_pos["head_motor_2"]
+        # Also stop motor 1
         action = self.p_control_action(robot)
+        action["head_motor_1.vel"] = 0
         robot.send_action(action)
 
     def handle_joycon_input(self, joycon):
         """Handle left Joy-Con directional pad input to control head motors"""
         # Get left Joy-Con directional pad state
-        button_up = joycon.joycon.get_button_up()      # Up: head_motor_1+
-        button_down = joycon.joycon.get_button_down()  # Down: head_motor_1-
-        button_left = joycon.joycon.get_button_left()  # Left: head_motor_2+
-        button_right = joycon.joycon.get_button_right() # Right: head_motor_2-
+        button_up = joycon.joycon.get_button_up()      # Up: head_motor_2-
+        button_down = joycon.joycon.get_button_down()  # Down: head_motor_2+
+        button_left = joycon.joycon.get_button_left()  # Left: head_motor_1 rotates
+        button_right = joycon.joycon.get_button_right() # Right: head_motor_1 rotates other way
 
+        # --- MODIFICATION: Set velocity for motor 1 based on button press ---
+        if button_left == 1:
+            self.head_motor_1_velocity = self.velocity_step
+            print(f"[HEAD] head_motor_1 velocity: {self.head_motor_1_velocity}")
+        elif button_right == 1:
+            self.head_motor_1_velocity = -self.velocity_step
+            print(f"[HEAD] head_motor_1 velocity: {self.head_motor_1_velocity}")
+        else:
+            self.head_motor_1_velocity = 0
+
+        # --- MODIFICATION: Keep position control for motor 2 ---
         if button_up == 1:
             self.target_positions["head_motor_2"] += self.degree_step
             print(f"[HEAD] head_motor_2: {self.target_positions['head_motor_2']}")
         if button_down == 1:
             self.target_positions["head_motor_2"] -= self.degree_step
             print(f"[HEAD] head_motor_2: {self.target_positions['head_motor_2']}")
-        if button_left == 1:
-            self.target_positions["head_motor_1"] += self.degree_step
-            print(f"[HEAD] head_motor_1: {self.target_positions['head_motor_1']}")
-        if button_right == 1:
-            self.target_positions["head_motor_1"] -= self.degree_step
-            print(f"[HEAD] head_motor_1: {self.target_positions['head_motor_1']}")
 
     def p_control_action(self, robot):
         obs = robot.get_observation()
         action = {}
-        for motor in self.target_positions:
-            current = obs.get(f"{HEAD_MOTOR_MAP[motor]}.pos", 0.0)
-            error = self.target_positions[motor] - current
-            control = self.kp * error
-            action[f"{HEAD_MOTOR_MAP[motor]}.pos"] = current + control
+
+        # --- MODIFICATION: P-control for motor 2 (position) ---
+        current_pos_2 = obs.get("head_motor_2.pos", 0.0)
+        error = self.target_positions["head_motor_2"] - current_pos_2
+        control = self.kp * error
+        action["head_motor_2.pos"] = current_pos_2 + control
+
+        # --- MODIFICATION: Direct velocity action for motor 1 ---
+        action["head_motor_1.vel"] = self.head_motor_1_velocity
+
         return action
 
 def get_joycon_base_action(joycon, robot):
@@ -341,10 +357,10 @@ def get_joycon_base_action(joycon, robot):
     pressed_keys = set()
 
     if button_x == 1:
-        pressed_keys.add('k')  # forward
+        pressed_keys.add('i')  # forward
         print("[BASE] Forward")
     if button_b == 1:
-        pressed_keys.add('i')  # backward
+        pressed_keys.add('k')  # backward
         print("[BASE] Backward")
     if button_y == 1:
         pressed_keys.add('u')  # left turn
