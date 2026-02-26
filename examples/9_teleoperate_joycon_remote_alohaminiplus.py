@@ -282,14 +282,21 @@ class SimpleHeadControl:
     def __init__(self, initial_obs, kp=1):
         self.kp = kp
         self.degree_step = 2
+        # --- MODIFICATION: Only handle position control for motor 2 ---
+        self.target_positions = {
+            "head_motor_2": initial_obs.get("head_motor_2.pos", 0.0),
+        }
+        self.zero_pos = {"head_motor_2": 0.0}
+
         # --- MODIFICATION: Add velocity control for motor 1 ---
         self.head_motor_1_velocity = 0
         self.velocity_step = 1500  # 舵机转动速度，您可以根据需要调整这个值
 
     def move_to_zero_position(self, robot):
-        # --- MODIFICATION: Only stop motor 1 ---
-        print(f"[HEAD] Stopping head motor...")
-        # Stop motor 1
+        # --- MODIFICATION: Only move motor 2 to zero and stop motor 1 ---
+        print(f"[HEAD] Moving head_motor_2 to Zero Position...")
+        self.target_positions["head_motor_2"] = self.zero_pos["head_motor_2"]
+        # Also stop motor 1
         action = self.p_control_action(robot)
         action["head_motor_1.vel"] = 0
         robot.send_action(action)
@@ -297,6 +304,8 @@ class SimpleHeadControl:
     def handle_joycon_input(self, joycon):
         """Handle left Joy-Con directional pad input to control head motors"""
         # Get left Joy-Con directional pad state
+        button_up = joycon.joycon.get_button_up()      # Up: head_motor_2-
+        button_down = joycon.joycon.get_button_down()  # Down: head_motor_2+
         button_left = joycon.joycon.get_button_left()  # Left: head_motor_1 rotates
         button_right = joycon.joycon.get_button_right() # Right: head_motor_1 rotates other way
 
@@ -310,9 +319,23 @@ class SimpleHeadControl:
         else:
             self.head_motor_1_velocity = 0
 
+        # --- MODIFICATION: Keep position control for motor 2 ---
+        if button_up == 1:
+            self.target_positions["head_motor_2"] += self.degree_step
+            print(f"[HEAD] head_motor_2: {self.target_positions['head_motor_2']}")
+        if button_down == 1:
+            self.target_positions["head_motor_2"] -= self.degree_step
+            print(f"[HEAD] head_motor_2: {self.target_positions['head_motor_2']}")
+
     def p_control_action(self, robot):
         obs = robot.get_observation()
         action = {}
+
+        # --- MODIFICATION: P-control for motor 2 (position) ---
+        current_pos_2 = obs.get("head_motor_2.pos", 0.0)
+        error = self.target_positions["head_motor_2"] - current_pos_2
+        control = self.kp * error
+        action["head_motor_2.pos"] = current_pos_2 + control
 
         # --- MODIFICATION: Direct velocity action for motor 1 ---
         action["head_motor_1.vel"] = self.head_motor_1_velocity
